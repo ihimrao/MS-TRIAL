@@ -43,6 +43,3 @@ func (l *LogEntry) Insert(entry LogEntry) error {
 	}
 	return nil
 }
-
-
-
