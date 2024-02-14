@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -36,6 +38,30 @@ func (l *LogEntry) Insert(entry LogEntry) error {
 		Name:      entry.Name,
 		Data:      entry.Data,
 		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *LogEntry) Delete(id string) error {
+	ID, err := primitive.ObjectIDFromHex(id)
+	collection := client.Database("logs").Collection("logs")
+	_, err = collection.DeleteOne(context.Background(), bson.M{"_id": ID})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *LogEntry) Edit(entry LogEntry) error {
+	ID, err := primitive.ObjectIDFromHex(entry.Id)
+	collection := client.Database("logs").Collection("logs")
+	_, err = collection.UpdateOne(context.TODO(), bson.M{"_id": ID}, LogEntry{
+		Name:      entry.Name,
+		Data:      entry.Data,
 		UpdatedAt: time.Now(),
 	})
 	if err != nil {
