@@ -25,6 +25,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Error connecting to Mongo", err)
 	}
+	fmt.Println("hello")
+	fmt.Println("hello")
 	app := &Config{
 		Models: data.New(mongoClient),
 	}
