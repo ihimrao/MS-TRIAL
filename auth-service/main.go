@@ -2,6 +2,7 @@ package main
 
 import (
 	route "auth-service/Routes"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,9 +13,11 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if os.Getenv("ENVIRONMENT") != "production" {
+		err := godotenv.Load()
+		if err != nil {
+			fmt.Println("Error loading .env file")
+		}
 	}
 	color.Cyan("🌏 Server running on localhost:" + os.Getenv("PORT"))
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -24,5 +27,5 @@ func main() {
 		AllowedHeaders: []string{"Content-Type", "Origin", "Accept", "*"},
 	})
 	handler := c.Handler(router)
-	http.ListenAndServe(":"+os.Getenv("PORT"), handler)
+	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), handler))
 }

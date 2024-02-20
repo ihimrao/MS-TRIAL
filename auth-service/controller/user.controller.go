@@ -66,12 +66,15 @@ var CreateUserHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Req
 var AuthorizeUserHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	var uStr = r.Header["uid"][0]
 	userId, err := primitive.ObjectIDFromHex(uStr)
-	var user user_model.User
-	userCollection.FindOne(context.TODO(), bson.M{"_id": userId}).Decode(&user)
 	if err != nil {
-		log.Fatal("Error creating User")
+		json.NewEncoder(w).Encode(utils.ErrorResponse(http.StatusUnauthorized, "Un-Authorized"))
+	}
+	var user user_model.User
+	err = userCollection.FindOne(context.TODO(), bson.M{"_id": userId}).Decode(&user)
+	if err != nil {
+		json.NewEncoder(w).Encode(utils.ErrorResponse(http.StatusUnauthorized, "Un-Authorized"))
 	}
 	w.WriteHeader(http.StatusCreated)
 	res := bson.M{"id": userId, "Authorized": true, "Permissions": []string{""}}
-	json.NewEncoder(w).Encode(utils.SuccessResponse(http.StatusOK, "User Created Successfully", res))
+	json.NewEncoder(w).Encode(utils.SuccessResponse(http.StatusOK, "Authorized", res))
 })

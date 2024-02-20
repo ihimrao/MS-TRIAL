@@ -3,8 +3,8 @@ package middlewares
 import (
 	"encoding/json"
 	"fmt"
-	database "go-base-fs/db"
 	"go-base-fs/utils"
+	"io"
 	"net/http"
 	"time"
 
@@ -12,42 +12,62 @@ import (
 )
 
 var jwtSecret = []byte(utils.GetEnvVar("JWT_SECRET"))
-var client = database.DatabaseConnection()
-var userCollection = client.Database(utils.GetEnvVar("DB_NAME")).Collection("USER")
+
+type Response struct {
+	Data    Data   `json:"data"`
+	Message string `json:"message"`
+	Status  int    `json:"status"`
+}
+
+type Data struct {
+	Authorized  bool     `json:"Authorized"`
+	Permissions []string `json:"Permissions"`
+	ID          string   `json:"id"`
+}
 
 func IsAuthorized(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header["Token"] != nil {
-			token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("There was an error")
-				}
-				return jwtSecret, nil
-			})
+			url := "http://localhost:8081/authorize"
+			client := &http.Client{}
+
+			req, err := http.NewRequest("POST", url, nil)
 			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(utils.ErrorResponse(http.StatusUnauthorized, "Token Malformed"))
+				fmt.Println("Error creating request:", err)
+				return
 			}
-			if token.Valid {
-				claims, ok := token.Claims.(jwt.MapClaims)
-				if !ok {
-					w.WriteHeader(http.StatusUnauthorized)
-					json.NewEncoder(w).Encode(utils.ErrorResponse(http.StatusUnauthorized, "Unable to extract claims"))
-					return
-				}
-				uid, ok := claims["client"].(string)
-				if !ok {
-					w.WriteHeader(http.StatusUnauthorized)
-					json.NewEncoder(w).Encode(utils.ErrorResponse(http.StatusUnauthorized, "UID not found in claims"))
-					return
-				}
-				r.Header["uid"] = []string{uid}
+
+			req.Header.Add("Token", r.Header["Token"][0])
+
+			resp, err := client.Do(req)
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				fmt.Println("Error reading response:", err)
+				return
+			}
+
+			var response Response
+			err = json.Unmarshal(body, &response)
+			if err != nil {
+				fmt.Println("Error decoding response:", err)
+				return
+			}
+
+			defer resp.Body.Close()
+			if response.Data.Authorized {
+				r.Header["uid"] = []string{response.Data.ID}
 				next.ServeHTTP(w, r)
+				return
 			}
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(utils.ErrorResponse(http.StatusUnauthorized, "Unauthorized User"))
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(utils.ErrorResponse(http.StatusUnauthorized, "Unauthorized User"))
-
 		}
 	})
 }

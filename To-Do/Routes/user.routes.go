@@ -3,6 +3,7 @@ package route
 import (
 	controller "go-base-fs/controllers"
 	middlewares "go-base-fs/handlers"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
